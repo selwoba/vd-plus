@@ -1,0 +1,1148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VD Plus</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg-2: #faf8f6; --panel: #ffffff; --field: #f6f3f0;
+    --line: #ece7e2; --line-2: #ddd6cf;
+    --text: #1a1714; --muted: #77706a; --faint: #a39b93;
+    --accent: #c2410c; --accent-hover: #9a3412; --accent-ink: #ffffff;
+    --accent-tint: #fff1e8; --accent-tint-2: #ffe0cc;
+    --ok: #15803d; --err: #dc2626; --warn: #b45309;
+    --bar: #efeae5; --overlay: rgba(26, 23, 20, .38);
+    --shadow: 0 12px 32px rgba(26, 23, 20, .14), 0 2px 6px rgba(26, 23, 20, .08);
+    --r: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121110; --bg-2: #181614; --panel: #1d1b19; --field: #23201d;
+      --line: #2c2926; --line-2: #3b3732;
+      --text: #f5f2ee; --muted: #a39b93; --faint: #6f6862;
+      --accent: #ea580c; --accent-hover: #f26b1d; --accent-ink: #ffffff;
+      --accent-tint: rgba(242, 107, 29, .13); --accent-tint-2: rgba(242, 107, 29, .24);
+      --ok: #4ade80; --err: #f87171; --warn: #fbbf24;
+      --bar: #2b2825; --overlay: rgba(0, 0, 0, .55);
+      --shadow: 0 12px 32px rgba(0, 0, 0, .5), 0 2px 6px rgba(0, 0, 0, .4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); overflow: hidden;
+         font: 13.5px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+         -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none; }
+  input, textarea, select, pre, .selectable { user-select: text; -webkit-user-select: text; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+  button:disabled { opacity: .45; cursor: default; }
+  svg { display: block; flex: none; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+  .app { display: grid; grid-template-rows: auto auto 1fr auto; height: 100vh; }
+
+  /* ---------- toolbar */
+  .toolbar { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); min-width: 0; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 750; font-size: 15px; letter-spacing: -.01em; white-space: nowrap; }
+  .brand b { color: var(--accent); }
+  .btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 18px;
+                 background: var(--accent); color: var(--accent-ink); border-radius: 9px; font-weight: 650; white-space: nowrap;
+                 box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 1px 2px rgba(154, 52, 18, .35); transition: background .15s; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-primary:active { transform: translateY(1px); }
+  .switch { position: relative; display: inline-flex; align-items: center; cursor: pointer; flex: none; }
+  .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .switch .track { width: 46px; height: 26px; border-radius: 99px; background: var(--line-2); transition: background .2s; position: relative; }
+  .switch .knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff;
+                  box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s; display: grid; place-items: center; color: var(--faint); }
+  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track .knob { transform: translateX(20px); color: var(--accent); }
+  .switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .switch.sm .track { width: 34px; height: 20px; } .switch.sm .knob { width: 14px; height: 14px; }
+  .switch.sm input:checked + .track .knob { transform: translateX(14px); }
+  .pickers { display: flex; align-items: center; gap: 2px; min-width: 0; overflow: hidden; }
+  .picker { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border-radius: 8px; white-space: nowrap; color: var(--muted); }
+  .picker:hover, .picker.open { background: var(--bg-2); color: var(--text); }
+  .picker b { color: var(--text); font-weight: 600; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+  .picker svg { opacity: .6; }
+  .spacer { flex: 1; }
+  .icon-btn { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); position: relative; flex: none; }
+  .icon-btn:hover, .icon-btn.on { background: var(--bg-2); color: var(--text); }
+  .icon-btn .dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); }
+  @media (max-width: 1050px) { .picker .lbl { display: none; } .brand span { display: none; } }
+
+  /* ---------- tabs */
+  .tabs { display: flex; align-items: center; gap: 4px; padding: 0 16px; border-bottom: 1px solid var(--line); min-width: 0; }
+  .tab { position: relative; height: 44px; padding: 0 10px; color: var(--muted); font-weight: 550; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .tab:hover { color: var(--text); }
+  .tab.on { color: var(--text); }
+  .tab.on::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--accent); }
+  .tab .n { font-size: 11px; font-weight: 600; color: var(--faint); background: var(--bg-2); border-radius: 99px; padding: 1px 6px; }
+  .tab.on .n { color: var(--accent); background: var(--accent-tint); }
+  .tabs-right { margin-left: auto; display: flex; align-items: center; gap: 6px; padding-left: 10px; }
+  .count { color: var(--faint); font-size: 12px; white-space: nowrap; margin-right: 4px; }
+  .filter { display: flex; align-items: center; gap: 6px; height: 30px; border-radius: 8px; padding: 0 8px; background: var(--field); color: var(--faint); width: 34px; transition: width .2s; overflow: hidden; }
+  .filter.open, .filter:focus-within { width: 200px; }
+  .filter { justify-content: center; cursor: text; }
+  .filter input { border: 0; background: none; outline: none; color: var(--text); font: inherit; width: 0; min-width: 0; padding: 0; }
+  .filter.open input, .filter:focus-within input { width: 100%; }
+  .filter.open, .filter:focus-within { justify-content: flex-start; }
+  .filter input:focus { outline: none; }
+  @media (max-width: 860px) { .tab .n { display: none; } .count { display: none; } }
+
+  /* ---------- body */
+  .body { display: grid; grid-template-columns: 1fr; min-height: 0; }
+  .body.with-details { grid-template-columns: 1fr 340px; }
+  .list { overflow-y: auto; min-height: 0; padding: 6px 0 24px; }
+  .row { display: grid; grid-template-columns: 108px 1fr auto; gap: 14px; align-items: center; padding: 8px 16px; margin: 0 8px; border-radius: 10px; cursor: default; position: relative; }
+  .row:hover { background: var(--bg-2); }
+  .row.sel { background: var(--accent-tint); }
+  .thumb { width: 108px; aspect-ratio: 16/9; border-radius: 7px; overflow: hidden; background: var(--bar); position: relative; display: grid; place-items: center; color: var(--faint); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb .badge { position: absolute; right: 4px; bottom: 4px; background: rgba(0,0,0,.72); color: #fff; font-size: 10.5px; font-weight: 600; padding: 1px 5px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+  .thumb .kind { position: absolute; left: 4px; bottom: 4px; background: var(--accent); color: #fff; border-radius: 4px; padding: 2px; }
+  .thumb.err { background: color-mix(in srgb, var(--err) 12%, transparent); color: var(--err); font-weight: 800; font-size: 20px; }
+  .info { min-width: 0; }
+  .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub { color: var(--muted); font-size: 12px; margin-top: 3px; display: flex; gap: 6px; align-items: center; white-space: nowrap; overflow: hidden; }
+  .sub .sep { color: var(--faint); }
+  .sub.err { color: var(--err); white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .sub .ok { color: var(--ok); display: inline-flex; }
+  .progress { height: 4px; border-radius: 99px; background: var(--bar); overflow: hidden; margin-top: 7px; max-width: 520px; }
+  .progress i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .5s; }
+  .progress.indet i { width: 35% !important; animation: indet 1.2s ease-in-out infinite; }
+  .row.paused .progress i { background: var(--warn); }
+  @keyframes indet { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+  .acts { display: flex; gap: 2px; opacity: 0; transition: opacity .12s; }
+  .row:hover .acts, .row.sel .acts, .row.active .acts { opacity: 1; }
+  .act { width: 30px; height: 30px; border-radius: 7px; display: grid; place-items: center; color: var(--muted); }
+  .act:hover { background: var(--panel); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+  .act.danger:hover { color: var(--err); }
+
+  .empty { display: grid; place-items: center; height: 100%; padding: 40px 20px; text-align: center; }
+  .empty h2 { margin: 18px 0 6px; font-size: 18px; letter-spacing: -.01em; }
+  .empty p { margin: 0 auto; color: var(--muted); max-width: 420px; }
+  .kbd { display: inline-block; font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 3px 6px; border-radius: 5px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 18px; }
+  .chip { font-size: 11.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; }
+  .drop-hint { position: fixed; inset: 0; background: color-mix(in srgb, var(--accent) 10%, transparent); border: 3px dashed var(--accent); display: none; place-items: center; z-index: 50; font-size: 18px; font-weight: 650; color: var(--accent); pointer-events: none; }
+  body.dragging .drop-hint { display: grid; }
+
+  /* ---------- details */
+  .details { border-left: 1px solid var(--line); overflow-y: auto; min-height: 0; padding: 16px; background: var(--bg-2); }
+  .details .hero { width: 100%; aspect-ratio: 16/9; border-radius: 10px; overflow: hidden; background: var(--bar); display: grid; place-items: center; color: var(--faint); }
+  .details .hero img { width: 100%; height: 100%; object-fit: cover; }
+  .details h3 { margin: 12px 0 4px; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+  .details .link { color: var(--accent); font-size: 12px; overflow-wrap: anywhere; cursor: pointer; }
+  .details .link:hover { text-decoration: underline; }
+  .meta-grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 14px 0; font-size: 12px; }
+  .meta-grid dt { color: var(--faint); } .meta-grid dd { margin: 0; overflow-wrap: anywhere; }
+  .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 8px;
+         background: var(--panel); border: 1px solid var(--line-2); font-weight: 550; white-space: nowrap; }
+  .btn:hover { border-color: var(--faint); }
+  .btn.accent { color: var(--accent); }
+  .btn.solid { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.solid:hover { background: var(--accent-hover); }
+  .section-title { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 18px 0 8px; }
+  .transcript { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; max-height: 340px; overflow: auto; white-space: pre-wrap; font-size: 12px; line-height: 1.5; margin: 0; }
+  .muted { color: var(--muted); } .faint { color: var(--faint); } .small { font-size: 12px; }
+
+  /* ---------- status bar */
+  .status { display: flex; align-items: center; gap: 16px; padding: 0 16px; height: 32px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; }
+  .status .sb { display: inline-flex; align-items: center; gap: 6px; }
+  .status button:hover { color: var(--accent); }
+  .status .live { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  .status .free { margin-left: auto; color: var(--accent); font-weight: 650; }
+
+  /* ---------- menus, dialogs, toast */
+  .menu { position: fixed; z-index: 100; min-width: 220px; max-width: 320px; background: var(--panel); border: 1px solid var(--line); border-radius: 11px; box-shadow: var(--shadow); padding: 5px; display: none; }
+  .menu.open { display: block; animation: pop .12s ease-out; }
+  @keyframes pop { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+  .mi { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 7px 10px; border-radius: 7px; }
+  .mi:hover:not(:disabled) { background: var(--accent); color: var(--accent-ink); }
+  .mi:hover:not(:disabled) .d, .mi:hover:not(:disabled) .check { color: var(--accent-ink); }
+  .mi .t { flex: 1; min-width: 0; } .mi .d { display: block; font-size: 11.5px; color: var(--faint); margin-top: 1px; }
+  .mi .check { width: 14px; color: var(--accent); }
+  .mi.danger { color: var(--err); }
+  .msep { height: 1px; background: var(--line); margin: 5px 6px; }
+  .mhead { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); padding: 6px 10px 4px; }
+  dialog { border: 1px solid var(--line); border-radius: 14px; padding: 0; background: var(--panel); color: var(--text); box-shadow: var(--shadow);
+           width: min(640px, calc(100vw - 40px)); max-height: calc(100vh - 60px); }
+  dialog::backdrop { background: var(--overlay); }
+  dialog[open] { animation: pop .15s ease-out; }
+  .dlg-h { display: flex; align-items: center; gap: 10px; padding: 16px 18px 0; }
+  .dlg-h h2 { margin: 0; font-size: 16px; flex: 1; }
+  .dlg-b { padding: 14px 18px; overflow: auto; max-height: calc(100vh - 200px); }
+  .dlg-f { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px 16px; border-top: 1px solid var(--line); align-items: center; }
+  textarea, input[type=text], input[type=number], select {
+    font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; }
+  textarea { min-height: 90px; resize: vertical; }
+  textarea:focus, input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .seg { display: inline-flex; background: var(--field); border-radius: 9px; padding: 3px; gap: 2px; }
+  .seg button { padding: 5px 12px; border-radius: 7px; color: var(--muted); font-weight: 550; }
+  .seg button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+  .toast { position: fixed; left: 50%; bottom: 46px; transform: translateX(-50%) translateY(20px); background: var(--text); color: var(--bg); padding: 9px 16px; border-radius: 10px; font-weight: 550; opacity: 0; transition: all .2s; z-index: 200; pointer-events: none; max-width: 80vw; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .opts { display: grid; gap: 6px; }
+  .opt { display: flex; gap: 10px; align-items: center; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; cursor: pointer; }
+  .opt:hover { border-color: var(--line-2); }
+  .opt:has(input:checked) { border-color: var(--accent); background: var(--accent-tint); }
+  .opt input { accent-color: var(--accent); }
+  .opt b { min-width: 64px; } .opt .r { margin-left: auto; color: var(--faint); font-size: 12px; }
+  .row-f { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  label.ck { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; }
+  label.ck input { accent-color: var(--accent); }
+  .entries { max-height: 260px; overflow: auto; border: 1px solid var(--line); border-radius: 9px; margin-top: 10px; }
+  .entries label { display: flex; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  .entries label:last-child { border-bottom: 0; }
+  .dlg-hero { display: flex; gap: 14px; align-items: flex-start; }
+  .dlg-hero img, .dlg-hero .ph { width: 150px; aspect-ratio: 16/9; border-radius: 8px; object-fit: cover; background: var(--bar); flex: none; }
+  .dlg-hero h3 { margin: 0 0 4px; font-size: 15px; overflow-wrap: anywhere; }
+  .results { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 12px; }
+  .res { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; position: relative; }
+  .res.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-tint-2); }
+  .res img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; background: var(--bar); }
+  .res .b { padding: 8px; font-size: 12px; } .res .t { font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .res .ckmark { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; display: none; place-items: center; }
+  .res.sel .ckmark { display: grid; }
+
+  /* settings */
+  #settingsDlg { width: min(760px, calc(100vw - 40px)); }
+  .set-wrap { display: grid; grid-template-columns: 170px 1fr; min-height: 440px; }
+  .set-nav { border-right: 1px solid var(--line); padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; background: var(--bg-2); border-radius: 14px 0 0 14px; }
+  .set-nav button { text-align: left; padding: 7px 10px; border-radius: 7px; color: var(--muted); font-weight: 550; }
+  .set-nav button.on { background: var(--accent-tint); color: var(--accent); }
+  .set-body { padding: 18px 20px; overflow: auto; max-height: calc(100vh - 140px); }
+  .set-page { display: none; } .set-page.on { display: block; }
+  .set-page h3 { margin: 0 0 14px; font-size: 15px; }
+  .field { display: grid; grid-template-columns: 200px 1fr; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .field:last-child { border-bottom: 0; }
+  .field .l { color: var(--text); } .field .l small { display: block; color: var(--faint); font-size: 11.5px; margin-top: 2px; }
+  .field .c { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
+  .field .c input[type=text], .field .c select, .field .c input[type=number] { max-width: 300px; }
+  code.cmd { display: block; background: var(--field); border-radius: 8px; padding: 10px; font-size: 11.5px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; }
+
+  /* subscriptions view */
+  .subs { padding: 16px 24px; overflow: auto; }
+  .sub-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .sub-add input[type=text] { flex: 1; min-width: 240px; }
+  .sub-row { display: grid; grid-template-columns: 40px 1fr auto auto; gap: 12px; align-items: center; padding: 10px 6px; border-bottom: 1px solid var(--line); }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); display: grid; place-items: center; font-weight: 750; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="toolbar">
+    <div class="brand" title="VD Plus: Video Downloader Plus">
+      <svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="10" width="60" height="44" rx="13" fill="var(--accent)"/><path d="M22 23h20L32 41z" fill="#fff" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></svg>
+      <span>VD <b>Plus</b></span>
+    </div>
+    <button class="btn-primary" id="pasteBtn" title="Paste a copied link (⌘V)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+      Paste Link
+    </button>
+    <label class="switch" id="smartWrap" title="Smart Mode: one click downloads with the settings to the right. Off: choose quality for each link.">
+      <input type="checkbox" id="smart" aria-label="Smart Mode">
+      <span class="track"><span class="knob"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 21h6v-1H9v1zm3-19a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2z"/></svg></span></span>
+    </label>
+    <div class="pickers">
+      <button class="picker" data-picker="kind"><span class="lbl">Download</span> <b id="pv-kind">Video</b><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></button>
+      <button class="picker" data-picker="quality"><span class="lbl">Quality</span> <b id="pv-quality">Best</b><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></button>
+      <button class="picker" data-picker="target"><span class="lbl">For</span> <b id="pv-target">Original</b><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></button>
+      <button class="picker" data-picker="folder"><span class="lbl">Save to</span> <b id="pv-folder">VD Plus</b><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></button>
+    </div>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="globeBtn" title="Sign in to sites (private, age-restricted, Instagram)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>
+      <span class="dot" id="globeDot" hidden></span>
+    </button>
+    <button class="icon-btn" id="settingsBtn" title="Settings (⌘,)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+    <button class="icon-btn" id="sideBtn" title="Show details panel">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M15 4v16"/></svg>
+    </button>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab on" data-tab="all">All <span class="n" id="n-all">0</span></button>
+    <button class="tab" data-tab="video">Video <span class="n" id="n-video">0</span></button>
+    <button class="tab" data-tab="audio">Audio <span class="n" id="n-audio">0</span></button>
+    <button class="tab" data-tab="playlists">Playlists <span class="n" id="n-playlists">0</span></button>
+    <button class="tab" data-tab="channels">Channels <span class="n" id="n-channels">0</span></button>
+    <button class="tab" data-tab="subs">Subscriptions <span class="n" id="n-subs">0</span></button>
+    <button class="tab" data-tab="failed">Failed <span class="n" id="n-failed">0</span></button>
+    <div class="tabs-right">
+      <span class="count" id="count">0 items</span>
+      <label class="filter" id="filterWrap" title="Search list (⌘F)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="filter" type="text" placeholder="Search downloads" aria-label="Search downloads">
+      </label>
+      <button class="icon-btn" id="sortBtn" title="Sort">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg>
+      </button>
+    </div>
+  </nav>
+
+  <main class="body" id="body">
+    <section class="list" id="list" tabindex="-1"></section>
+    <aside class="details" id="details" hidden></aside>
+  </main>
+
+  <footer class="status">
+    <span class="sb"><span class="live"></span><span id="sbEngine">engine…</span> <button id="updBtn" title="Update the download engine">Update</button></span>
+    <span class="sb" id="sbActive">Idle</span>
+    <button class="sb" id="sbFolder" title="Open downloads folder"></button>
+    <span class="sb" id="sbSign"></span>
+    <span class="free">Free · No limits</span>
+  </footer>
+</div>
+
+<div class="drop-hint">Drop link to download</div>
+<div class="menu" id="menu" role="menu"></div>
+<div class="toast" id="toast"></div>
+
+<!-- Add link / search -->
+<dialog id="addDlg">
+  <div class="dlg-h"><h2>Add downloads</h2>
+    <div class="seg" id="addSeg"><button class="on" data-mode="links">Links</button><button data-mode="search">Search YouTube</button></div></div>
+  <div class="dlg-b">
+    <div id="addLinks">
+      <textarea id="addUrls" placeholder="Paste one or more links: YouTube, Instagram, TikTok, X, Facebook, Vimeo, Reddit, Twitch, playlists, channels…"></textarea>
+      <div class="row-f"><label class="ck"><input type="checkbox" id="addPlaylist"> Whole playlist / channel</label>
+        <span class="faint small" style="margin-left:auto">Uses the toolbar settings. Smart Mode off lets you pick quality.</span></div>
+    </div>
+    <div id="addSearch" hidden>
+      <div style="display:flex;gap:8px"><input type="text" id="sq" placeholder="Search YouTube…"><select id="ssite" style="width:auto"><option value="youtube">Relevant</option><option value="youtube_new">Newest</option><option value="soundcloud">SoundCloud</option></select></div>
+      <div class="results" id="sres"></div>
+      <div class="muted small" id="smsg" style="margin-top:8px"></div>
+    </div>
+  </div>
+  <div class="dlg-f"><span class="muted small" id="addMsg" style="margin-right:auto"></span>
+    <button class="btn" data-close>Cancel</button><button class="btn solid" id="addGo">Download</button></div>
+</dialog>
+
+<!-- Quality picker (Smart Mode off) -->
+<dialog id="pickDlg"><div id="pickBody"></div></dialog>
+
+<!-- Confirm delete -->
+<dialog id="confirmDlg" style="width:min(440px,calc(100vw - 40px))">
+  <div class="dlg-h"><h2 id="cfTitle">Remove</h2></div>
+  <div class="dlg-b"><p id="cfText" class="muted" style="margin:0 0 12px"></p>
+    <label class="ck" id="cfTrashWrap"><input type="checkbox" id="cfTrash"> Also move the downloaded files to the Trash</label></div>
+  <div class="dlg-f"><button class="btn" data-close>Cancel</button><button class="btn solid" id="cfGo">Remove</button></div>
+</dialog>
+
+<!-- Sign-in fallback (browser mode) -->
+<dialog id="signDlg" style="width:min(480px,calc(100vw - 40px))">
+  <div class="dlg-h"><h2>Sign in to sites</h2></div>
+  <div class="dlg-b"><p class="muted" style="margin-top:0">Private, age-restricted and most Instagram videos need you to be logged in. In the VD Plus app the globe opens a built-in sign-in browser. In a web browser, choose the browser you're already signed in with:</p>
+    <select id="signBrowser"><option value="">Don't use logins</option><option value="chrome">Chrome</option><option value="safari">Safari</option><option value="firefox">Firefox</option><option value="brave">Brave</option><option value="edge">Edge</option><option value="arc">Arc</option></select></div>
+  <div class="dlg-f"><button class="btn" data-close>Close</button><button class="btn solid" id="signSave">Save</button></div>
+</dialog>
+
+<!-- Settings -->
+<dialog id="settingsDlg">
+  <div class="set-wrap">
+    <nav class="set-nav" id="setNav">
+      <div class="mhead">Settings</div>
+      <button class="on" data-page="general">General</button>
+      <button data-page="downloads">Downloads</button>
+      <button data-page="extras">Subtitles & extras</button>
+      <button data-page="connection">Logins & network</button>
+      <button data-page="data">History & import</button>
+      <button data-page="ai">AI assistants</button>
+      <button data-page="about">About</button>
+      <div style="flex:1"></div>
+      <button data-close>Done</button>
+    </nav>
+    <div class="set-body">
+      <section class="set-page on" data-page="general"><h3>General</h3>
+        <div class="field"><div class="l">Smart Mode<small>Paste = download right away with toolbar settings</small></div><div class="c"><label class="switch sm"><input type="checkbox" data-s="smart_mode"><span class="track"><span class="knob"></span></span></label></div></div>
+        <div class="field"><div class="l">Download folder</div><div class="c"><input type="text" data-s="out_dir"><button class="btn" id="setChoose">Choose…</button></div></div>
+        <div class="field"><div class="l">Research folder<small>Where AI assistants save videos</small></div><div class="c"><input type="text" data-s="research_dir"></div></div>
+        <div class="field"><div class="l">Subfolders<small>Playlists and channels get their own folder</small></div><div class="c"><label class="switch sm"><input type="checkbox" data-s="subdirs"><span class="track"><span class="knob"></span></span></label></div></div>
+        <div class="field"><div class="l">Auto-download copied links<small>Watches the clipboard for video links</small></div><div class="c"><label class="switch sm"><input type="checkbox" data-s="clipboard_watch"><span class="track"><span class="knob"></span></span></label></div></div>
+        <div class="field"><div class="l">Notifications</div><div class="c"><label class="switch sm"><input type="checkbox" data-s="notify"><span class="track"><span class="knob"></span></span></label></div></div>
+        <div class="field"><div class="l">Keep Mac awake while downloading</div><div class="c"><label class="switch sm"><input type="checkbox" data-s="prevent_sleep"><span class="track"><span class="knob"></span></span></label></div></div>
+      </section>
+      <section class="set-page" data-page="downloads"><h3>Downloads</h3>
+        <div class="field"><div class="l">Container<small>"Auto" keeps original quality</small></div><div class="c"><select data-s="container"><option value="auto">Auto (MP4, MKV when needed)</option><option value="mp4">MP4</option><option value="mkv">MKV</option><option value="webm">WebM</option></select></div></div>
+        <div class="field"><div class="l">Preferred audio language<small>For videos with several audio tracks</small></div><div class="c"><input type="text" data-s="audio_lang" placeholder="en, es, fr…"></div></div>
+        <div class="field"><div class="l">Simultaneous downloads</div><div class="c"><input type="number" min="1" max="10" data-s="concurrency" style="width:90px"></div></div>
+        <div class="field"><div class="l">Speed limit<small>Blank = unlimited, e.g. 5M or 800K</small></div><div class="c"><input type="text" data-s="rate_limit" style="width:120px"></div></div>
+        <div class="field"><div class="l">Record live streams from the start</div><div class="c"><label class="switch sm"><input type="checkbox" data-s="live_from_start"><span class="track"><span class="knob"></span></span></label></div></div>
+      </section>
+      <section class="set-page" data-page="extras"><h3>Subtitles & extras</h3>
+        <div class="field"><div class="l">Download subtitles</div><div class="c"><label class="switch sm"><input type="checkbox" data-s="subs"><span class="track"><span class="knob"></span></span></label></div></div>
+        <div class="field"><div class="l">Subtitle languages</div><div class="c"><input type="text" data-s="sub_langs" style="width:160px"></div></div>
+        <div class="field"><div class="l">Embed subtitles in the video</div><div class="c"><label class="switch sm"><input type="checkbox" data-s="embed_subs"><span class="track"><span class="knob"></span></span></label></div></div>
+        <div class="field"><div class="l">Embed thumbnail & metadata</div><div class="c"><label class="switch sm"><input type="checkbox" data-s="thumbnail"><span class="track"><span class="knob"></span></span></label></div></div>
+        <div class="field"><div class="l">Cut sponsor segments<small>YouTube, via SponsorBlock</small></div><div class="c"><label class="switch sm"><input type="checkbox" data-s="sponsorblock"><span class="track"><span class="knob"></span></span></label></div></div>
+        <div class="field"><div class="l">Split videos into chapters</div><div class="c"><label class="switch sm"><input type="checkbox" data-s="split_chapters"><span class="track"><span class="knob"></span></span></label></div></div>
+      </section>
+      <section class="set-page" data-page="connection"><h3>Logins & network</h3>
+        <div class="field"><div class="l">Use logins from<small>Needed for private, age-restricted, most Instagram</small></div><div class="c"><select data-s="cookies"><option value="">Nothing</option><option value="app">VD Plus sign-in (globe)</option><option value="chrome">Chrome</option><option value="safari">Safari</option><option value="firefox">Firefox</option><option value="brave">Brave</option><option value="edge">Edge</option><option value="arc">Arc</option></select></div></div>
+        <div class="field"><div class="l">YouTube / Google login from<small>Google blocks in-app sign-in, so borrow your browser's. macOS may block this unless VD Plus has Full Disk Access (System Settings › Privacy &amp; Security)</small></div><div class="c"><select data-s="google_cookies"><option value="">Don't use</option><option value="chrome">Chrome</option><option value="safari">Safari</option><option value="arc">Arc</option><option value="brave">Brave</option><option value="edge">Edge</option><option value="firefox">Firefox</option></select></div></div>
+        <div class="field"><div class="l">Built-in sign-in<small id="cookieState">Not signed in</small></div><div class="c"><button class="btn" id="setSignIn">Sign in…</button><button class="btn" id="setSignOut">Sign out</button></div></div>
+        <div class="field"><div class="l">Proxy<small>e.g. socks5://127.0.0.1:1080</small></div><div class="c"><input type="text" data-s="proxy"></div></div>
+      </section>
+      <section class="set-page" data-page="data"><h3>History & import</h3>
+        <div class="field"><div class="l">Export<small>Download history and subscriptions (JSON)</small></div><div class="c"><button class="btn" id="setExport">Export…</button></div></div>
+        <div class="field"><div class="l">Import<small>A .txt of links or a VD Plus export</small></div><div class="c"><button class="btn" id="setImport">Import…</button><input type="file" id="importFile" accept=".json,.txt" hidden></div></div>
+        <div class="field"><div class="l">Check subscriptions every<small>Hours, while VD Plus is open</small></div><div class="c"><input type="number" min="0.25" step="0.25" data-s="sub_check_hours" style="width:90px"></div></div>
+        <div class="field"><div class="l">Clear finished items from the list</div><div class="c"><button class="btn" id="setClear">Clear…</button></div></div>
+      </section>
+      <section class="set-page" data-page="ai"><h3>AI assistants</h3>
+        <p class="muted" style="margin-top:0">Claude and Codex (ChatGPT) can download, get transcripts, read metadata and look at frames through VD Plus's MCP tools. Downloads they start show up here.</p>
+        <div class="section-title">Claude Code</div>
+        <code class="cmd" id="mcpCmd"></code>
+        <div class="row-f"><button class="btn" id="copyMcp">Copy command</button></div>
+        <p class="faint small">Claude Desktop and Codex: add the same command and path as an MCP server in their settings.</p>
+      </section>
+      <section class="set-page" data-page="about"><h3>About VD Plus</h3>
+        <div style="display:flex;gap:14px;align-items:center">
+          <svg width="56" height="56" viewBox="0 0 64 64"><rect x="2" y="10" width="60" height="44" rx="13" fill="var(--accent)"/><path d="M22 23h20L32 41z" fill="#fff" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></svg>
+          <div><b style="font-size:16px">VD Plus</b><div class="muted">Video Downloader Plus · v3.0</div><div class="faint small" id="aboutEngine"></div></div>
+        </div>
+        <p class="muted">Free, no daily limits. Downloads from YouTube, Instagram, TikTok, X, Facebook, Vimeo, Reddit, Twitch and ~1800 more sites. Everything runs on this Mac.</p>
+        <p class="faint small">Please respect copyright and each site's terms.</p>
+      </section>
+    </div>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const dur = s => { s = Math.round(Number(s) || 0); if (!s) return ""; const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
+const bytes = n => { n = Number(n) || 0; if (!n) return ""; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (n >= 1000 && i < 4) { n /= 1000; i++; } return n.toFixed(n < 10 && i ? 1 : 0) + " " + u[i]; };
+const ago = t => { if (!t) return ""; const s = Date.now() / 1000 - t; if (s < 60) return "just now"; if (s < 3600) return Math.floor(s / 60) + " min ago";
+  if (s < 86400) return Math.floor(s / 3600) + " h ago"; return new Date(t * 1000).toLocaleDateString([], { month: "short", day: "numeric" }); };
+const resLabel = h => { h = Number(h) || 0; return !h ? "" : h >= 4320 ? "8K" : h >= 2160 ? "4K" : h >= 1440 ? "1440p" : h + "p"; };
+const bridge = window.webkit?.messageHandlers?.vd;
+const ACTIVE = ["downloading", "processing", "converting", "queued", "starting", "paused"];
+const I = {
+  play: '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  folder: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  pause: '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+  resume: '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  retry: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
+  x: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  more: '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+  check: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>',
+  music: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+  list: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
+  find: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/><path d="M9.5 8.5v5l4-2.5z" fill="currentColor" stroke="none"/></svg>',
+  film: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z" fill="currentColor"/></svg>',
+};
+
+let S = {}, STATUS = {}, JOBS = [], SUBS = [], tab = "all", sortBy = "newest", selected = null, selSet = new Set(), detailsOpen = false, transcriptCache = {};
+try { sortBy = localStorage.getItem("vd.sort") || "newest"; detailsOpen = localStorage.getItem("vd.details") === "1"; } catch {}
+
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  let j = {}; try { j = await r.json(); } catch {}
+  if (r.status === 401) { location.reload(); throw new Error("Session expired"); }
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+let toastT;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600); }
+function fail(e) { toast(e.message || String(e)); }
+
+// ---------------------------------------------------------------- settings & pickers
+const PICK = {
+  kind: { title: "Download", items: [
+    { v: "video", t: "Video", d: "Video with sound" },
+    { v: "audio:mp3", t: "Audio · MP3", d: "Music, podcasts, plays everywhere" },
+    { v: "audio:m4a", t: "Audio · M4A", d: "Apple-friendly AAC" },
+    { v: "audio:flac", t: "Audio · FLAC", d: "Lossless" },
+    { v: "audio:best", t: "Audio · Original", d: "No conversion, best source" }] },
+  quality: { title: "Quality", items: [
+    { v: "best", t: "Best available", d: "Up to 8K / HDR when the site has it" },
+    { v: "2160", t: "4K", d: "2160p" }, { v: "1440", t: "1440p" }, { v: "1080", t: "1080p", d: "Full HD" },
+    { v: "720", t: "720p" }, { v: "480", t: "480p" }, { v: "360", t: "360p", d: "Smallest files" }] },
+  target: { title: "Make it play on", items: [
+    { v: "original", t: "Original", d: "Highest quality, any codec" },
+    { v: "apple", t: "Mac & iPhone", d: "H.264 MP4: QuickTime, Photos, iMovie" },
+    { v: "android", t: "Android", d: "MP4, full resolution" },
+    { v: "windows", t: "Windows", d: "MP4, full resolution" },
+    { v: "editing", t: "Video editing", d: "H.264 MP4 for Premiere, Resolve, Final Cut" }] },
+};
+const kindValue = () => S.kind === "audio" ? "audio:" + (S.audio_format || "mp3") : "video";
+const label = (key, v) => (PICK[key].items.find(i => i.v === v) || {}).t || v;
+const base = p => (p || "").replace(/\/+$/, "").split("/").pop() || p;
+
+function renderPickers() {
+  $("smart").checked = !!S.smart_mode;
+  $("pv-kind").textContent = S.kind === "audio" ? (S.audio_format === "best" ? "Audio" : (S.audio_format || "mp3").toUpperCase()) : "Video";
+  $("pv-quality").textContent = S.kind === "audio" ? "Best" : (S.quality === "best" ? "Best" : label("quality", S.quality));
+  $("pv-target").textContent = label("target", S.target || "original");
+  $("pv-folder").textContent = base(S.out_dir);
+  $("sbFolder").innerHTML = `${I.folder}<span>${esc(S.out_dir?.replace(STATUS.home || "~~", "~"))}</span>`;
+  document.querySelectorAll("[data-s]").forEach(el => { const v = S[el.dataset.s]; el.type === "checkbox" ? el.checked = !!v : (document.activeElement !== el && (el.value = v ?? "")); });
+}
+async function loadSettings() { S = await api("/api/settings"); renderPickers(); }
+window.vdRefreshSettings = loadSettings;
+async function setS(patch) { try { S = await api("/api/settings", patch); renderPickers(); } catch (e) { fail(e); loadSettings(); } }
+
+$("smart").onchange = () => setS({ smart_mode: $("smart").checked }).then(() => toast($("smart").checked ? "Smart Mode on: paste to download instantly" : "Smart Mode off: you'll choose quality for each link"));
+
+function openMenu(anchor, html, opts = {}) {
+  const m = $("menu"); m.innerHTML = html; m.classList.add("open");
+  const r = anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : { left: anchor.x, right: anchor.x, top: anchor.y, bottom: anchor.y };
+  const w = m.offsetWidth, h = m.offsetHeight;
+  let x = opts.alignRight ? r.right - w : r.left, y = r.bottom + 6;
+  if (x + w > innerWidth - 8) x = innerWidth - w - 8; if (x < 8) x = 8;
+  if (y + h > innerHeight - 8) y = Math.max(8, (r.top || y) - h - 6);
+  m.style.left = x + "px"; m.style.top = y + "px";
+  document.querySelectorAll(".picker.open").forEach(p => p.classList.remove("open"));
+  if (anchor.classList) anchor.classList.add("open");
+}
+function closeMenu() { $("menu").classList.remove("open"); document.querySelectorAll(".picker.open").forEach(p => p.classList.remove("open")); }
+document.addEventListener("mousedown", e => { if (!e.target.closest("#menu") && !e.target.closest(".picker") && !e.target.closest("#sortBtn") && !e.target.closest("[data-more]")) closeMenu(); });
+
+const mi = (attrs, t, d, checked, cls = "") => `<button class="mi ${cls}" ${attrs}><span class="check">${checked ? I.check : ""}</span><span class="t">${esc(t)}${d ? `<span class="d">${esc(d)}</span>` : ""}</span></button>`;
+
+document.querySelectorAll(".picker").forEach(p => p.onclick = () => {
+  if (p.classList.contains("open")) return closeMenu();
+  const key = p.dataset.picker;
+  if (key === "folder") {
+    const home = STATUS.home || "";
+    const choices = [[home + "/Downloads/VD Plus", "Downloads › VD Plus"], [home + "/Movies/VD Plus", "Movies › VD Plus"], [home + "/Desktop", "Desktop"]];
+    let html = `<div class="mhead">Save to</div>` + mi(`data-folder="${esc(S.out_dir)}"`, base(S.out_dir), S.out_dir.replace(home, "~"), true);
+    html += choices.filter(c => c[0] !== S.out_dir).map(c => mi(`data-folder="${esc(c[0])}"`, c[1], "", false)).join("");
+    html += `<div class="msep"></div>` + mi(`data-folder-choose`, "Choose folder…", "", false) + mi(`data-folder-open`, "Open in Finder", "", false);
+    return openMenu(p, html);
+  }
+  const cur = key === "kind" ? kindValue() : key === "quality" ? S.quality : S.target || "original";
+  let html = `<div class="mhead">${esc(PICK[key].title)}</div>` + PICK[key].items.map(i => mi(`data-pick="${key}" data-v="${esc(i.v)}" ${key === "quality" && S.kind === "audio" ? "disabled" : ""}`, i.t, i.d, i.v === cur)).join("");
+  if (key === "quality" && S.kind === "audio") html += `<div class="faint small" style="padding:6px 10px">Audio always uses the best source.</div>`;
+  openMenu(p, html);
+});
+
+$("menu").addEventListener("click", async e => {
+  const b = e.target.closest(".mi"); if (!b || b.disabled) return;
+  closeMenu();
+  const d = b.dataset;
+  if (d.pick === "kind") { const [k, f] = d.v.split(":"); return setS(k === "audio" ? { kind: "audio", audio_format: f } : { kind: "video" }); }
+  if (d.pick === "quality") return setS({ quality: d.v });
+  if (d.pick === "target") return setS({ target: d.v });
+  if (d.folder !== undefined && d.folder) return setS({ out_dir: d.folder });
+  if ("folderChoose" in d) return chooseFolder();
+  if ("folderOpen" in d) return api("/api/reveal", {});
+  if (d.sort) { sortBy = d.sort; try { localStorage.setItem("vd.sort", sortBy); } catch {} return render(); }
+  if (d.bulk === "remove") return confirmRemove([...selSet], false);
+  if (d.bulk === "delete") return confirmRemove([...selSet], true);
+  if (d.bulk === "retry") {
+    const ids = [...selSet].filter(id => ["error", "cancelled", "interrupted"].includes(JOBS.find(j => j.id === id)?.status));
+    for (const id of ids) { try { await api("/api/retry", { id }); await api("/api/delete", { ids: [id] }); } catch {} }
+    select(null); toast(`Retrying ${ids.length}`); return poll(true);
+  }
+  if (d.job) return jobAction(d.act, d.job);
+  if (d.empty) return emptyAction(d.empty);
+});
+
+async function chooseFolder() {
+  if (bridge) return bridge.postMessage({ action: "chooseFolder" });
+  try { const r = await api("/api/choose_folder", {}); if (!r.cancelled) { S = r; renderPickers(); toast("Saving to " + base(S.out_dir)); } } catch (e) { fail(e); }
+}
+$("setChoose").onclick = chooseFolder;
+
+// ---------------------------------------------------------------- adding downloads
+const urlsIn = t => [...new Set((t || "").match(/https?:\/\/[^\s"'<>]+/gi) || [])];
+
+async function addUrls(urls, extra = {}) {
+  if (!urls.length) return;
+  if (!S.smart_mode && urls.length === 1 && !extra.skipPicker) return picker(urls[0], extra);
+  try {
+    await api("/api/download", { url_list: urls, overrides: { playlist: !!extra.playlist, ...extra.overrides } });
+    toast(urls.length === 1 ? "Download added" : `${urls.length} downloads added`);
+    if (tab === "subs" || tab === "failed") setTab("all");
+  } catch (e) { fail(e); }
+}
+
+async function pasteLink(text) {
+  if (text === undefined) { try { text = (await api("/api/clipboard")).text; } catch (e) { return fail(e); } }
+  const urls = urlsIn(text);
+  if (urls.length) return addUrls(urls);
+  openAdd(text && text.length < 200 ? text.trim() : "");
+}
+window.vdPasteLink = () => pasteLink();
+$("pasteBtn").onclick = () => pasteLink();
+
+const editable = el => el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+document.addEventListener("paste", e => {
+  if (editable(e.target) || document.querySelector("dialog[open]")) return;
+  e.preventDefault(); pasteLink(e.clipboardData.getData("text"));
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeMenu();
+  if (document.querySelector("dialog[open]") || editable(e.target)) return;
+  const k = e.key.toLowerCase();
+  if (e.metaKey && k === "v") { e.preventDefault(); pasteLink(); }
+  else if (e.metaKey && k === "f") { e.preventDefault(); $("filter").focus(); }
+  else if (e.metaKey && k === ",") { e.preventDefault(); openSettings(); }
+  else if ((e.key === "Backspace" || e.key === "Delete") && selSet.size) { e.preventDefault(); confirmRemove([...selSet]); }
+  else if (e.metaKey && k === "a" && tab !== "subs") { e.preventDefault(); selSet = new Set(visible().map(j => j.id)); selected = [...selSet][0] || null; render(); }
+  else if (e.key === "Enter" && selected) { jobAction("play", selected); }
+  else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); moveSel(e.key === "ArrowDown" ? 1 : -1); }
+});
+// drag & drop links
+let dragN = 0;
+addEventListener("dragenter", e => { e.preventDefault(); dragN++; document.body.classList.add("dragging"); });
+addEventListener("dragleave", () => { if (--dragN <= 0) { dragN = 0; document.body.classList.remove("dragging"); } });
+addEventListener("dragover", e => e.preventDefault());
+addEventListener("drop", e => { e.preventDefault(); dragN = 0; document.body.classList.remove("dragging");
+  pasteLink(e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain")); });
+
+// Add dialog
+let addMode = "links", sResults = [], sSel = new Set();
+function openAdd(prefill = "") {
+  $("addMsg").textContent = ""; $("addPlaylist").checked = false;
+  const isUrl = /^https?:/i.test(prefill);
+  setAddMode(prefill && !isUrl ? "search" : "links");
+  if (addMode === "search") { $("sq").value = prefill; if (prefill) runSearch(); } else $("addUrls").value = prefill;
+  $("addDlg").showModal(); (addMode === "search" ? $("sq") : $("addUrls")).focus();
+}
+function setAddMode(m) { addMode = m; document.querySelectorAll("#addSeg button").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
+  $("addLinks").hidden = m !== "links"; $("addSearch").hidden = m !== "search"; $("addGo").textContent = m === "search" ? "Download selected" : "Download"; }
+document.querySelectorAll("#addSeg button").forEach(b => b.onclick = () => setAddMode(b.dataset.mode));
+$("addGo").onclick = async () => {
+  if (addMode === "links") {
+    const urls = urlsIn($("addUrls").value);
+    if (!urls.length) { const t = $("addUrls").value.trim(); if (t) { setAddMode("search"); $("sq").value = t; return runSearch(); } return ($("addMsg").textContent = "Paste at least one link."); }
+    $("addDlg").close(); addUrls(urls, { playlist: $("addPlaylist").checked });
+  } else {
+    const urls = [...sSel].map(i => sResults[i].url);
+    if (!urls.length) return ($("addMsg").textContent = "Click results to select them.");
+    $("addDlg").close(); addUrls(urls, { skipPicker: true });
+  }
+};
+$("sq").addEventListener("keydown", e => { if (e.key === "Enter") runSearch(); });
+async function runSearch() {
+  const q = $("sq").value.trim(); if (!q) return;
+  $("smsg").textContent = "Searching…"; $("sres").innerHTML = ""; sSel.clear();
+  try {
+    sResults = await api("/api/search", { query: q, limit: 24, site: $("ssite").value });
+    $("smsg").textContent = sResults.length ? `${sResults.length} results. Click to select.` : "No results.";
+    $("sres").innerHTML = sResults.map((r, i) => `<div class="res" data-i="${i}"><span class="ckmark">${I.check}</span>
+      ${r.thumbnail ? `<img loading="lazy" src="${esc(r.thumbnail)}" alt="">` : `<img alt="">`}
+      <div class="b"><div class="t">${esc(r.title)}</div><div class="faint">${esc(r.channel || "")}${r.duration ? " · " + dur(r.duration) : ""}</div></div></div>`).join("");
+  } catch (e) { $("smsg").textContent = e.message; }
+}
+$("sres").onclick = e => { const c = e.target.closest(".res"); if (!c) return; const i = +c.dataset.i;
+  sSel.has(i) ? sSel.delete(i) : sSel.add(i); c.classList.toggle("sel"); $("addGo").textContent = sSel.size ? `Download ${sSel.size}` : "Download selected"; };
+
+// ---------------------------------------------------------------- quality picker (Smart Mode off)
+async function picker(url, extra = {}) {
+  const D = $("pickBody");
+  D.innerHTML = `<div class="dlg-b" style="text-align:center;padding:40px"><div class="muted">Reading link…</div><div class="progress indet" style="margin:14px auto 0;max-width:240px"><i></i></div></div>`;
+  $("pickDlg").showModal();
+  let a;
+  try { a = await api("/api/analyze", { url }); }
+  catch (e) { D.innerHTML = `<div class="dlg-h"><h2>Couldn't read this link</h2></div><div class="dlg-b"><p class="muted">${esc(e.message)}</p></div><div class="dlg-f"><button class="btn" data-close>Close</button><button class="btn solid" id="pForce">Try downloading anyway</button></div>`;
+    $("pForce").onclick = () => { $("pickDlg").close(); addUrls([url], { ...extra, skipPicker: true }); }; return; }
+
+  const head = `<div class="dlg-h"><h2>${a.type === "playlist" ? "Playlist" : "Download options"}</h2></div>`;
+  const hero = `<div class="dlg-hero">${a.thumbnail ? `<img src="${esc(a.thumbnail)}" alt="">` : `<div class="ph"></div>`}
+    <div><h3>${esc(a.title)}</h3><div class="muted small">${esc(a.uploader || "")}${a.duration ? " · " + dur(a.duration) : ""}${a.count ? ` · ${Number(a.count)} videos` : ""}${a.is_live ? " · LIVE" : ""}</div></div></div>`;
+  if (a.type === "playlist") {
+    D.innerHTML = head + `<div class="dlg-b">${hero}
+      <div class="row-f"><label class="ck"><input type="checkbox" id="pAll" checked> Select all</label>
+        <select id="pKind" style="width:auto"><option value="video">Video</option><option value="audio">Audio (MP3)</option></select>
+        <select id="pQ" style="width:auto">${PICK.quality.items.map(i => `<option value="${i.v}" ${i.v === S.quality ? "selected" : ""}>${esc(i.t)}</option>`).join("")}</select>
+        <label class="ck"><input type="checkbox" id="pSubs"> Subtitles</label></div>
+      <div class="entries">${a.entries.map((e, i) => `<label><input type="checkbox" class="pE" value="${i + 1}" checked style="accent-color:var(--accent)"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i + 1}. ${esc(e.title)}</span><span class="faint">${dur(e.duration)}</span></label>`).join("")}</div></div>
+      <div class="dlg-f"><button class="btn" data-close>Cancel</button><button class="btn solid" id="pGo">Download</button></div>`;
+    $("pAll").onchange = () => document.querySelectorAll(".pE").forEach(c => c.checked = $("pAll").checked);
+    $("pGo").onclick = async () => {
+      const items = [...document.querySelectorAll(".pE:checked")].map(c => c.value); if (!items.length) return;
+      $("pickDlg").close();
+      addUrls([url], { skipPicker: true, playlist: true, overrides: { playlist_items: items.length === a.count ? "" : items.join(","),
+        kind: $("pKind").value, audio_format: "mp3", quality: $("pQ").value, subs: $("pSubs").checked } });
+    };
+    return;
+  }
+  const vf = a.video_formats || [];
+  const subs = [...new Set([...(a.subtitles || []), ...(a.auto_subtitles || [])])];
+  D.innerHTML = head + `<div class="dlg-b">${hero}
+    <div class="row-f"><div class="seg" id="pSeg"><button class="on" data-k="video">Video</button><button data-k="audio">Audio only</button></div>
+      <select id="pTarget" style="width:auto;margin-left:auto">${PICK.target.items.map(i => `<option value="${i.v}" ${i.v === (S.target || "original") ? "selected" : ""}>For: ${esc(i.t)}</option>`).join("")}</select></div>
+    <div class="opts" id="pVid" style="margin-top:12px">
+      ${vf.map((f, i) => `<label class="opt"><input type="radio" name="pf" value="${esc(f.format_id)}" ${i ? "" : "checked"}>
+        <b>${esc(resLabel(f.height))}${Number(f.fps) > 30 ? Math.round(Number(f.fps)) : ""}</b><span class="muted">${esc(f.vcodec)}${f.hdr ? " · HDR" : ""}</span><span class="r">${esc(f.size)}</span></label>`).join("") || `<div class="muted">Best available quality will be used.</div>`}
+    </div>
+    <div class="opts" id="pAud" hidden style="margin-top:12px">
+      ${["mp3", "m4a", "flac", "opus", "wav", "best"].map(x => `<label class="opt"><input type="radio" name="pa" value="${x}" ${x === (S.audio_format || "mp3") ? "checked" : ""}><b>${x === "best" ? "Original" : x.toUpperCase()}</b></label>`).join("")}
+    </div>
+    <div class="row-f">
+      ${(a.audio_languages || []).length > 1 ? `<select id="pLang" style="width:auto"><option value="">Default audio</option>${a.audio_languages.map(l => `<option>${esc(l)}</option>`).join("")}</select>` : ""}
+      <label class="ck"><input type="checkbox" id="pSub" ${subs.length ? "" : "disabled"}> Subtitles</label>
+      ${subs.length ? `<select id="pSubL" style="width:auto">${subs.map(l => `<option ${l === "en" ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>` : ""}
+      ${(a.chapters || []).length ? `<label class="ck"><input type="checkbox" id="pChap"> Split ${a.chapters.length} chapters</label>` : ""}
+    </div>
+    <div class="row-f"><span class="muted">Clip</span><input type="text" id="pStart" placeholder="start 0:00" style="width:110px"><span class="faint">to</span><input type="text" id="pEnd" placeholder="end" style="width:110px"><span class="faint small">Optional: download just a part</span></div>
+    </div><div class="dlg-f"><button class="btn" data-close>Cancel</button><button class="btn solid" id="pGo">Download</button></div>`;
+  let kind = "video";
+  document.querySelectorAll("#pSeg button").forEach(b => b.onclick = () => { kind = b.dataset.k;
+    document.querySelectorAll("#pSeg button").forEach(x => x.classList.toggle("on", x === b)); $("pVid").hidden = kind !== "video"; $("pAud").hidden = kind !== "audio"; $("pTarget").disabled = kind === "audio"; });
+  $("pGo").onclick = () => {
+    const o = { kind, playlist: false, target: $("pTarget").value };
+    if (kind === "video") { const f = document.querySelector("[name=pf]:checked"); if (f && ["original", "android", "windows"].includes(o.target)) o.format_id = f.value; }
+    else o.audio_format = document.querySelector("[name=pa]:checked").value;
+    if ($("pLang")?.value) o.audio_lang = $("pLang").value;
+    if ($("pSub").checked) { o.subs = true; o.sub_langs = $("pSubL").value; }
+    if ($("pStart").value || $("pEnd").value) { o.start = $("pStart").value.trim(); o.end = $("pEnd").value.trim(); }
+    if ($("pChap")?.checked) o.split_chapters = true;
+    $("pickDlg").close(); addUrls([url], { skipPicker: true, overrides: o });
+  };
+}
+
+// ---------------------------------------------------------------- list
+const isChannel = j => j.playlist && /\/(@[^/]+|channel\/|c\/|user\/)|tiktok\.com\/@|instagram\.com\/(?!p\/|reel)/i.test(j.url) && !/[?&]list=/.test(j.url);
+const FILTERS = {
+  all: () => true,
+  video: j => j.kind !== "audio" && !j.playlist,
+  audio: j => j.kind === "audio",
+  playlists: j => j.playlist && !isChannel(j) && j.source !== "subscription",
+  channels: j => isChannel(j) || j.source === "subscription",
+  failed: j => j.status === "error" || j.status === "interrupted",
+};
+const SORTS = {
+  newest: (a, b) => b.created - a.created, oldest: (a, b) => a.created - b.created,
+  name: (a, b) => (a.title || "").localeCompare(b.title || ""), size: (a, b) => (b.meta?.bytes || 0) - (a.meta?.bytes || 0),
+};
+$("sortBtn").onclick = () => openMenu($("sortBtn"), `<div class="mhead">Sort by</div>` +
+  [["newest", "Newest first"], ["oldest", "Oldest first"], ["name", "Name"], ["size", "File size"]].map(([v, t]) => mi(`data-sort="${v}"`, t, "", v === sortBy)).join(""), { alignRight: true });
+$("filter").oninput = () => { $("filterWrap").classList.toggle("open", !!$("filter").value); render(); };
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => setTab(t.dataset.tab));
+function setTab(t) { tab = t; document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x.dataset.tab === t)); rows.clear(); $("list").innerHTML = ""; render(); if (t === "subs") loadSubs(); }
+
+const rows = new Map();
+function visible() {
+  const q = $("filter").value.trim().toLowerCase();
+  return JOBS.filter(FILTERS[tab] || FILTERS.all).filter(j => !q || (j.title || "").toLowerCase().includes(q) || (j.url || "").toLowerCase().includes(q)).sort(SORTS[sortBy]);
+}
+function site(j) { return j.meta?.extractor_key || (j.url.match(/^https?:\/\/(?:www\.|m\.)?([^/]+)/) || [])[1] || ""; }
+function subline(j) {
+  const parts = [];
+  if (j.status === "downloading") {
+    if (j.playlist_count) parts.push(`${j.playlist_index}/${j.playlist_count}`);
+    if (!j.indeterminate) parts.push(`${(j.percent || 0).toFixed(0)}%`);
+    [j.size || (j.indeterminate ? "Starting…" : ""), j.speed, j.eta ? j.eta + " left" : ""].forEach(x => { if (x) parts.push(x); });
+  } else if (j.status === "processing") parts.push("Finishing up (merging, tagging)…");
+  else if (j.status === "converting") { parts.push("Converting so it plays in QuickTime…", `${(j.percent || 0).toFixed(0)}%`); if (j.size) parts.push(j.size); }
+  else if (j.status === "queued" || j.status === "starting") parts.push("Waiting to start…");
+  else if (j.status === "paused") parts.push(`Paused at ${(j.percent || 0).toFixed(0)}%`);
+  else if (j.status === "cancelled") parts.push("Cancelled");
+  else if (j.status === "interrupted") parts.push("Interrupted. Retry to resume");
+  else if (j.status === "done") {
+    parts.push(site(j)); if (j.kind === "audio") parts.push((j.files[0] || "").split(".").pop().toUpperCase()); else if (j.meta?.height) parts.push(resLabel(j.meta.height));
+    if (j.kind !== "audio" && j.files.length) parts.push((j.files[j.files.length - 1].split(".").pop() || "").toUpperCase());
+    if (j.playlist && j.files.length) parts.push(`${j.files.length} files`);
+    if (j.meta?.bytes) parts.push(bytes(j.meta.bytes));
+    if (j.playlist && !j.files.length) parts.push("No new videos");
+    parts.push(ago(j.finished || j.created));
+    if (j.meta?.note) parts.push(j.meta.note);
+  }
+  return parts.filter(Boolean).map(esc).join('<span class="sep">·</span>');
+}
+const thumbSrc = j => j.meta?.thumb ? `/api/thumb?id=${encodeURIComponent(j.id)}` : (j.meta?.thumbnail || "");
+function thumbHTML(j) {
+  if (j.status === "error") return "!";
+  const m = j.meta || {}, src = thumbSrc(j);
+  return (src ? `<img src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()">` : I.film) +
+    (m.duration ? `<span class="badge">${esc(dur(m.duration))}</span>` : "") +
+    (j.kind === "audio" ? `<span class="kind">${I.music}</span>` : j.playlist ? `<span class="kind">${I.list}</span>` : "");
+}
+const LOGIN_PAGES = [
+  [/instagram\.com|cdninstagram|fbcdn/i, "Instagram", "https://www.instagram.com/accounts/login/"],
+  [/facebook\.com|fb\.watch/i, "Facebook", "https://www.facebook.com/login"],
+  [/tiktok\.com/i, "TikTok", "https://www.tiktok.com/login"],
+  [/(^|\.|\/)(x|twitter)\.com/i, "X", "https://x.com/login"],
+  [/vimeo\.com/i, "Vimeo", "https://vimeo.com/log_in"],
+  [/youtube\.com|youtu\.be/i, "YouTube", "https://accounts.google.com/"],
+];
+function loginTarget(j) {
+  const hit = LOGIN_PAGES.find(([re]) => re.test(j.url));
+  if (hit) return { site: hit[1], url: hit[2] };
+  const origin = (j.url.match(/^https?:\/\/[^/]+/) || [""])[0];
+  return { site: origin.replace(/^https?:\/\/(www\.)?/, ""), url: origin };
+}
+const needsLogin = j => j.status === "error" && (j.needs_login || /needs you to be signed in|empty media response|not granting access|log ?in|sign in|age.?restrict/i.test(j.error || ""));
+const canSniff = j => j.status === "error" && !needsLogin(j) && (j.can_sniff || /No video found in this page|Unsupported URL|No video formats|Unable to extract/i.test(j.error || ""));
+function actsHTML(j) {
+  const b = (a, icon, t, cls = "") => `<button class="act ${cls}" data-act="${a}" title="${t}">${icon}</button>`;
+  let h = "";
+  if (["downloading", "processing", "converting"].includes(j.status)) h += b("pause", I.pause, "Pause");
+  if (j.status === "paused") h += b("resume", I.resume, "Resume");
+  if (j.status === "done" && j.files.length) h += b("play", I.play, "Play") + b("reveal", I.folder, "Show in Finder");
+  if (needsLogin(j)) h += `<button class="btn accent" data-act="signin" style="height:30px" title="Log in to this site, then VD Plus retries">Sign in</button>`;
+  if (canSniff(j)) h += `<button class="btn accent" data-act="sniff" style="height:30px" title="Open the page like a browser and catch the video stream">${I.find} Find video</button>`;
+  if (["error", "cancelled", "interrupted"].includes(j.status)) h += b("retry", I.retry, "Retry");
+  h += `<button class="act" data-more="1" title="More">${I.more}</button>`;
+  h += ACTIVE.includes(j.status) ? b("cancel", I.x, "Cancel", "danger") : b("remove", I.x, "Remove from list", "danger");
+  return h;
+}
+function render() {
+  const list = $("list");
+  updateCounts();
+  if (tab === "subs") return renderSubs();
+  const vis = visible();
+  $("count").textContent = `${vis.length} item${vis.length === 1 ? "" : "s"}`;
+  if (!vis.length) {
+    rows.clear();
+    const q = $("filter").value.trim();
+    list.innerHTML = q || tab !== "all" ? `<div class="empty"><div><h2>${q ? "No matches" : "Nothing here yet"}</h2><p>${q ? "Try a different search." : "Downloads of this type will show up here."}</p></div></div>` :
+      `<div class="empty"><div>
+        <svg width="84" height="84" viewBox="0 0 64 64" style="margin:0 auto"><rect x="4" y="12" width="56" height="40" rx="12" fill="var(--accent-tint-2)"/><path d="M23 25h18L32 40z" fill="var(--accent)" stroke="var(--accent)" stroke-width="4" stroke-linejoin="round"/></svg>
+        <h2>Copy a video link, then click Paste Link</h2>
+        <p>Or press <span class="kbd">⌘V</span> anywhere in this window, or drop a link here. Smart Mode downloads right away with the settings in the toolbar.</p>
+        <div class="chips">${["YouTube", "Instagram", "TikTok", "X / Twitter", "Facebook", "Vimeo", "Reddit", "Twitch", "SoundCloud", "+1800 more"].map(s => `<span class="chip">${s}</span>`).join("")}</div>
+      </div></div>`;
+    return;
+  }
+  if (list.querySelector(".empty")) list.innerHTML = "";
+  const seen = new Set();
+  vis.forEach((j, idx) => {
+    seen.add(j.id);
+    let r = rows.get(j.id);
+    if (!r) {
+      const el = document.createElement("div");
+      el.className = "row"; el.dataset.id = j.id;
+      el.innerHTML = `<div class="thumb"></div><div class="info"><div class="title"></div><div class="sub"></div></div><div class="acts"></div>`;
+      r = { el, thumb: "", info: "", acts: "", cls: "" }; rows.set(j.id, r);
+    }
+    const t = thumbHTML(j); if (t !== r.thumb) { r.el.children[0].innerHTML = t; r.el.children[0].className = "thumb" + (j.status === "error" ? " err" : ""); r.thumb = t; }
+    const live = ACTIVE.includes(j.status);
+    const info = `<div class="title" title="${esc(j.title)}">${esc(j.title)}</div>` +
+      (j.status === "error" ? `<div class="sub err">${esc(j.error || "Download failed")}</div>` :
+        `<div class="sub">${j.status === "done" ? `<span class="ok">${I.check}</span>` : ""}${subline(j)}</div>`) +
+      (live ? `<div class="progress ${["processing", "queued", "starting"].includes(j.status) || (j.status === "downloading" && (j.indeterminate || !j.percent)) ? "indet" : ""}"><i style="width:${j.percent || 0}%"></i></div>` : "");
+    if (info !== r.info) { r.el.children[1].innerHTML = info; r.info = info; }
+    const a = actsHTML(j); if (a !== r.acts) { r.el.children[2].innerHTML = a; r.acts = a; }
+    const cls = "row" + (selSet.has(j.id) ? " sel" : "") + (live ? " active" : "") + (j.status === "paused" ? " paused" : "");
+    if (cls !== r.cls) { r.el.className = cls; r.cls = cls; }
+    if (list.children[idx] !== r.el) list.insertBefore(r.el, list.children[idx] || null);
+  });
+  for (const [id, r] of rows) if (!seen.has(id)) { r.el.remove(); rows.delete(id); }
+}
+function updateCounts() {
+  for (const k of Object.keys(FILTERS)) { const n = $("n-" + k); if (n) n.textContent = JOBS.filter(FILTERS[k]).length; }
+  $("n-subs").textContent = SUBS.length;
+  const act = JOBS.filter(j => j.status === "downloading");
+  const q = JOBS.filter(j => ["queued", "starting"].includes(j.status)).length;
+  const conv = JOBS.filter(j => j.status === "converting").length;
+  $("sbActive").textContent = conv && !act.length ? `${conv} converting${q ? ` · ${q} waiting` : ""}` : act.length ? `${act.length} downloading${q ? ` · ${q} waiting` : ""}` + (act.length === 1 && act[0].speed && !/N\/?A/.test(act[0].speed) ? ` · ${act[0].speed}` : "") : q ? `${q} waiting` : "Idle";
+}
+
+$("list").addEventListener("click", e => {
+  const row = e.target.closest(".row");
+  if (!row) { select(null); return; }
+  const btn = e.target.closest("[data-act]");
+  if (btn) return jobAction(btn.dataset.act, row.dataset.id);
+  if (e.target.closest("[data-more]")) { select(row.dataset.id); return openJobMenu(e.target.closest("[data-more]"), row.dataset.id, { alignRight: true }); }
+  const id = row.dataset.id;
+  if (e.metaKey) {  // add / remove one
+    selSet.has(id) ? selSet.delete(id) : selSet.add(id);
+    selected = selSet.has(id) ? id : ([...selSet].pop() || null);
+    render(); if (detailsOpen) renderDetails();
+  } else if (e.shiftKey && selected) {  // range from the last clicked row
+    const ids = visible().map(j => j.id), a = ids.indexOf(selected), b = ids.indexOf(id);
+    if (a >= 0 && b >= 0) ids.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(x => selSet.add(x));
+    render();
+  } else select(id);
+});
+$("list").addEventListener("dblclick", e => { const row = e.target.closest(".row"); if (row && !e.target.closest("button")) jobAction("play", row.dataset.id); });
+$("list").addEventListener("contextmenu", e => {
+  e.preventDefault();
+  const row = e.target.closest(".row");
+  const at = { x: e.clientX, y: e.clientY, getBoundingClientRect: () => ({ left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY - 6 }) };
+  if (row && selSet.size > 1 && selSet.has(row.dataset.id)) {
+    const n = selSet.size, any = id => JOBS.find(j => j.id === id);
+    const failed = [...selSet].filter(id => ["error", "cancelled", "interrupted"].includes(any(id)?.status)).length;
+    return openMenu(at, `<div class="mhead">${n} selected</div>` +
+      (failed ? mi(`data-bulk="retry"`, `Retry ${failed} failed`) : "") +
+      mi(`data-bulk="remove"`, `Remove ${n} from list`) + mi(`data-bulk="delete"`, `Delete ${n} files…`, "", false, "danger"));
+  }
+  if (row) { select(row.dataset.id); return openJobMenu(at, row.dataset.id); }
+  openMenu(at, mi(`data-empty="paste"`, "Paste Link", "⌘V") + `<div class="msep"></div>` + mi(`data-empty="clear"`, "Remove finished…") + mi(`data-empty="delete-all"`, "Delete all…", "", false, "danger"));
+});
+function openJobMenu(anchor, id, opts) {
+  const j = JOBS.find(x => x.id === id); if (!j) return;
+  const it = (act, t, d, cls) => mi(`data-job="${esc(id)}" data-act="${act}"`, t, d, false, cls);
+  let h = "";
+  if (j.status === "done" && j.files.length) h += it("play", "Play") + it("reveal", "Show in Finder");
+  h += it("details", "Details & transcript") + it("copy", "Copy link") + it("open", "Open page in browser");
+  h += `<div class="msep"></div>`;
+  if (["downloading", "processing", "converting"].includes(j.status)) h += it("pause", "Pause");
+  if (j.status === "paused") h += it("resume", "Resume");
+  if (ACTIVE.includes(j.status)) h += it("cancel", j.status === "converting" ? "Stop converting (keeps the original)" : "Cancel download");
+  if (["error", "cancelled", "interrupted"].includes(j.status)) h += it("retry", "Retry");
+  if (j.status !== "done" || !j.files.length) h += it("sniff", "Find video on page", "Opens the page and catches the stream");
+  if (!ACTIVE.includes(j.status)) h += it("again", "Download again") + (j.kind !== "audio" ? it("audio", "Download as MP3") : "");
+  if (j.playlist || isChannel(j)) h += it("subscribe", "Subscribe to new uploads");
+  h += `<div class="msep"></div>` + it("remove", "Remove from list");
+  if (j.files.length) h += it("delete", "Delete file…", "", "danger");
+  openMenu(anchor, h, opts);
+}
+function select(id) { selected = id; selSet = new Set(id ? [id] : []); render(); if (detailsOpen) renderDetails(); }
+function moveSel(d) { const v = visible(); if (!v.length) return; let i = v.findIndex(j => j.id === selected); i = Math.max(0, Math.min(v.length - 1, i + d)); select(v[i].id); rows.get(v[i].id)?.el.scrollIntoView({ block: "nearest" }); }
+
+async function jobAction(act, id) {
+  const j = JOBS.find(x => x.id === id); if (!j) return;
+  try {
+    switch (act) {
+      case "play": if (j.status === "done") await api("/api/play", { id }); break;
+      case "reveal": await api("/api/reveal", { id }); break;
+      case "pause": case "resume": case "cancel": await api("/api/" + act, { id }); break;
+      case "retry": case "again": await api("/api/retry", { id }); toast("Added again"); break;
+      case "audio": await api("/api/download", { url_list: [j.url], overrides: { kind: "audio", audio_format: "mp3", playlist: j.playlist } }); toast("Downloading as MP3"); break;
+      case "signin": {
+        const t = loginTarget(j);
+        if (bridge) {
+          bridge.postMessage({ action: "signIn", url: t.url,
+            reason: `${t.site} needs you to log in before VD Plus can download ${j.title && !/^https?:/i.test(j.title) ? "“" + j.title.slice(0, 80) + "”" : "this video"}. Log in below, then click Done. The download retries automatically.` });
+          toast(`Log in to ${t.site} in the window that opened`);
+        } else signIn();
+        break;
+      }
+      case "sniff":
+        if (bridge) { bridge.postMessage({ action: "sniff", url: j.url }); toast("Opening the page. Press play there if the video doesn't start"); }
+        else toast("\u201cFind video on page\u201d works in the VD Plus app");
+        break;
+      case "copy": await navigator.clipboard.writeText(j.url).catch(() => {}); toast("Link copied"); break;
+      case "open": window.open(j.url, "_blank"); break;
+      case "details": selected = id; setDetails(true); break;
+      case "subscribe": await api("/api/subs/add", { url: j.url, title: j.meta?.playlist_title || j.meta?.uploader || j.title, only_new: true }); toast("Subscribed. New uploads will download automatically"); loadSubs(); break;
+      case "remove": await api("/api/delete", { ids: [id] }); if (selected === id) select(null); toast("Removed from list"); break;
+      case "delete": confirmRemove([id], true); break;
+    }
+  } catch (e) { fail(e); }
+  poll(true);
+}
+function emptyAction(a) {
+  if (a === "paste") pasteLink();
+  if (a === "clear") confirmRemove(null, false);
+  if (a === "delete-all") confirmRemove(null, true);
+}
+let cfPending = null;
+function confirmRemove(ids, files = false) {
+  const n = ids ? ids.length : JOBS.filter(j => !ACTIVE.includes(j.status)).length;
+  if (!n) return toast("Nothing to remove");
+  cfPending = ids;
+  const many = ids && ids.length > 1;
+  $("cfTitle").textContent = many ? (files ? `Delete ${n} files?` : `Remove ${n} items from the list?`)
+    : ids ? (files ? "Delete file?" : "Remove from list?") : (files ? "Delete all finished items?" : "Remove finished items?");
+  $("cfText").textContent = many ? `${n} items will be removed from the list.` + (files ? "" : " Files stay where they are.")
+    : ids ? (files ? `"${JOBS.find(j => j.id === ids[0])?.title || ""}" will be removed from the list.` : "The item is removed from the list. Files stay where they are.")
+    : `${n} finished item${n === 1 ? "" : "s"} will be removed from the list.`;
+  $("cfTrash").checked = files; $("cfGo").textContent = files ? "Delete" : "Remove";
+  $("confirmDlg").showModal();
+}
+$("cfGo").onclick = async () => {
+  $("confirmDlg").close();
+  try {
+    const r = await api("/api/delete", cfPending ? { ids: cfPending, trash: $("cfTrash").checked } : { all_finished: true, trash: $("cfTrash").checked });
+    toast(`Removed ${r.removed}${r.trashed ? ` · ${r.trashed} file${r.trashed === 1 ? "" : "s"} moved to Trash` : ""}`);
+    if (cfPending && cfPending.some(id => selSet.has(id))) select(null);
+  } catch (e) { fail(e); }
+  poll(true);
+};
+
+// ---------------------------------------------------------------- details panel
+function setDetails(open) { detailsOpen = open; try { localStorage.setItem("vd.details", open ? "1" : "0"); } catch {}
+  $("details").hidden = !open; $("body").classList.toggle("with-details", open); $("sideBtn").classList.toggle("on", open); if (open) renderDetails(); }
+$("sideBtn").onclick = () => setDetails(!detailsOpen);
+let detailsSig = "";
+function renderDetails(force) {
+  const D = $("details"), j = JOBS.find(x => x.id === selected);
+  if (!j) { const sig = "none"; if (sig === detailsSig && !force) return; detailsSig = sig;
+    D.innerHTML = `<div class="section-title" style="margin-top:0">Details</div><p class="muted small">Select a download to see its info, file location and transcript.</p>
+      <div class="section-title">Shortcuts</div><div class="small muted" style="display:grid;gap:6px">
+      <div><span class="kbd">⌘V</span> paste link</div><div><span class="kbd">⌘F</span> search list</div><div><span class="kbd">↑ ↓</span> move selection</div>
+      <div><span class="kbd">↩</span> play</div><div><span class="kbd">⌫</span> remove</div><div>Right-click any row for more</div></div>`; return; }
+  const sig = JSON.stringify([j.id, j.status, j.files, j.meta, j.title, transcriptCache[j.id]?.state]);
+  if (sig === detailsSig && !force) return; detailsSig = sig;
+  const m = j.meta || {}, file = j.files[j.files.length - 1];
+  const tr = transcriptCache[j.id];
+  D.innerHTML = `<div class="hero">${thumbSrc(j) ? `<img src="${esc(thumbSrc(j))}" alt="">` : I.film}</div>
+    <h3>${esc(j.title)}</h3><div class="link" data-d="open">${esc(j.url)}</div>
+    <dl class="meta-grid">
+      <dt>Status</dt><dd>${esc(j.status)}${j.status === "downloading" ? ` · ${(j.percent || 0).toFixed(0)}%` : ""}</dd>
+      ${site(j) ? `<dt>Site</dt><dd>${esc(site(j))}</dd>` : ""}
+      ${m.uploader ? `<dt>By</dt><dd>${esc(m.uploader)}</dd>` : ""}
+      ${m.duration ? `<dt>Length</dt><dd>${esc(dur(m.duration))}</dd>` : ""}
+      ${m.height && j.kind !== "audio" ? `<dt>Quality</dt><dd>${esc(resLabel(m.height))}</dd>` : ""}
+      ${m.bytes ? `<dt>Size</dt><dd>${esc(bytes(m.bytes))}</dd>` : ""}
+      <dt>Added</dt><dd>${esc(new Date(j.created * 1000).toLocaleString())}</dd>
+      ${j.source && j.source !== "ui" ? `<dt>Source</dt><dd>${esc(j.source === "ai" ? "AI assistant" : j.source)}</dd>` : ""}
+      ${file ? `<dt>File</dt><dd class="link" data-d="reveal">${esc(file.replace(STATUS.home || "~~", "~"))}</dd>` : ""}
+    </dl>
+    <div class="btn-grid">
+      ${file ? `<button class="btn solid" data-d="play">${I.play} Play</button><button class="btn" data-d="reveal">${I.folder} Finder</button>` : ""}
+      <button class="btn" data-d="copy">Copy link</button>
+      <button class="btn" data-d="${["error", "cancelled", "interrupted"].includes(j.status) ? "retry" : "again"}">${I.retry} ${["error", "cancelled", "interrupted"].includes(j.status) ? "Retry" : "Again"}</button>
+    </div>
+    ${j.error ? `<div class="section-title">Error</div><p class="small" style="color:var(--err);margin:0;overflow-wrap:anywhere">${esc(j.error)}</p>` : ""}
+    <div class="section-title">Transcript</div>
+    ${!tr ? `<button class="btn accent" data-d="transcript" style="width:100%">Get transcript</button><p class="faint small">Uses captions, or transcribes locally with Whisper when there are none.</p>` :
+      tr.state === "loading" ? `<div class="muted small">Getting transcript…</div><div class="progress indet"><i></i></div>` :
+      tr.state === "error" ? `<p class="small" style="color:var(--err)">${esc(tr.text)}</p><button class="btn" data-d="transcript">Try again</button>` :
+      `<pre class="transcript selectable">${esc(tr.text)}</pre><div class="row-f"><button class="btn" data-d="tcopy">Copy</button><button class="btn" data-d="tsave">Save .txt</button><span class="faint small">${esc(tr.source)}</span></div>`}
+    ${j.log && j.log.length ? `<div class="section-title">Log</div><pre class="transcript selectable" style="max-height:180px;font-size:11px">${esc(j.log.slice(-30).join("\n"))}</pre>` : ""}`;
+}
+$("details").addEventListener("click", async e => {
+  const d = e.target.closest("[data-d]")?.dataset.d; if (!d) return;
+  const j = JOBS.find(x => x.id === selected); if (!j) return;
+  if (d === "transcript") {
+    transcriptCache[j.id] = { state: "loading" }; renderDetails(true);
+    const file = j.files.find(f => /\.(mp4|mkv|webm|mov|m4a|mp3|wav|flac|opus|ogg)$/i.test(f));
+    try { const r = await api("/api/transcript", { target: file || j.url }); transcriptCache[j.id] = { state: "ok", text: r.text, source: r.source === "whisper" ? "Transcribed with Whisper" : "From captions" }; }
+    catch (err) { transcriptCache[j.id] = { state: "error", text: err.message }; }
+    return renderDetails(true);
+  }
+  if (d === "tcopy") { navigator.clipboard.writeText(transcriptCache[j.id].text).catch(() => {}); return toast("Transcript copied"); }
+  if (d === "tsave") { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([transcriptCache[j.id].text], { type: "text/plain" }));
+    a.download = (j.title || "transcript").replace(/[\/:*?"<>|]/g, "_").slice(0, 100) + ".txt"; return a.click(); }
+  jobAction(d, j.id);
+});
+
+// ---------------------------------------------------------------- subscriptions
+async function loadSubs() { try { SUBS = await api("/api/subs"); } catch {} updateCounts(); if (tab === "subs") renderSubs(); }
+function renderSubs() {
+  $("count").textContent = `${SUBS.length} subscription${SUBS.length === 1 ? "" : "s"}`;
+  const keep = $("subUrl")?.value || "";
+  $("list").innerHTML = `<div class="subs">
+    <div class="sub-add"><input type="text" id="subUrl" placeholder="Channel, playlist or profile link (YouTube, TikTok, Instagram…)" value="${esc(keep)}">
+      <select id="subMode" style="width:auto"><option value="1">Only new uploads</option><option value="0">Also get latest 30 now</option></select>
+      <button class="btn solid" id="subAdd">Subscribe</button></div>
+    <p class="faint small">New uploads download automatically every ${esc(S.sub_check_hours)} h while VD Plus is open, using your toolbar settings.</p>
+    ${SUBS.length ? SUBS.map(s => `<div class="sub-row"><div class="avatar">${esc((s.title || "?").replace(/^\W+/, "")[0] || "?").toUpperCase()}</div>
+      <div style="min-width:0"><div class="title">${esc(s.title)}</div><div class="faint small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.url)} · checked ${esc(ago(s.last_check) || "never")}${s.last_result ? " · " + esc(s.last_result) : ""}</div></div>
+      <label class="switch sm" title="Auto-check"><input type="checkbox" data-subtoggle="${esc(s.id)}" ${s.enabled ? "checked" : ""}><span class="track"><span class="knob"></span></span></label>
+      <div style="display:flex;gap:6px"><button class="btn" data-subcheck="${esc(s.id)}">Check now</button><button class="act danger" data-subdel="${esc(s.id)}" title="Unsubscribe">${I.x}</button></div></div>`).join("")
+      : `<div class="empty" style="height:auto;padding:50px 0"><div><h2>No subscriptions yet</h2><p>Subscribe to a channel or playlist and VD Plus grabs new uploads for you.</p></div></div>`}
+  </div>`;
+  $("subAdd").onclick = async () => {
+    const url = $("subUrl").value.trim(); if (!/^https?:\/\//i.test(url)) return toast("Enter a channel or playlist link");
+    $("subAdd").disabled = true; $("subAdd").textContent = "Reading channel…";
+    try { await api("/api/subs/add", { url, only_new: $("subMode").value === "1" }); $("subUrl").value = ""; toast("Subscribed"); } catch (e) { fail(e); }
+    loadSubs();
+  };
+}
+$("list").addEventListener("change", e => { const id = e.target.dataset.subtoggle; if (id) api("/api/subs/toggle", { id, enabled: e.target.checked }).then(loadSubs); });
+$("list").addEventListener("click", async e => {
+  const t = e.target.closest("[data-subcheck],[data-subdel]"); if (!t) return;
+  if (t.dataset.subdel) { await api("/api/subs/delete", { id: t.dataset.subdel }); toast("Unsubscribed"); }
+  if (t.dataset.subcheck) { await api("/api/subs/check", { id: t.dataset.subcheck }); toast("Checking for new uploads…"); }
+  loadSubs();
+});
+
+// ---------------------------------------------------------------- sign-in, settings, status
+async function loadCookies() {
+  try { const c = await api("/api/cookies"); const on = c.signed_in && S.cookies === "app";
+    $("globeDot").hidden = !on; const parts = [];
+    if (S.cookies === "app" && c.signed_in) parts.push(`VD Plus (${c.sites} sites)`);
+    else if (S.cookies && S.cookies !== "app") parts.push(S.cookies);
+    const blocked = b => (STATUS.browser_blocked || []).includes(b);
+    if (S.cookies === "app" && S.google_cookies) parts.push(`YouTube via ${S.google_cookies}` + (blocked(S.google_cookies) ? " (blocked by macOS)" : ""));
+    $("globeDot").hidden = !parts.length;
+    $("sbSign").textContent = parts.length ? "Logins: " + parts.join(" + ") : "";
+    $("cookieState").textContent = c.signed_in ? `Saved logins for ${c.sites} sites` : "Not signed in"; } catch {}
+}
+window.vdGoogleLogin = b => { toast(`YouTube downloads will use your ${b[0].toUpperCase() + b.slice(1)} login`); loadSettings().then(loadCookies); };
+window.vdSignedIn = async n => {
+  autoLogin.clear();
+  await loadSettings(); loadCookies();
+  // Retry recent downloads that failed only because the user wasn't signed in yet.
+  const failed = JOBS.filter(j => needsLogin(j) && j.source !== "ai" && !loginRetried.has(j.url) && Date.now() / 1000 - j.created < 6 * 3600);
+  for (const j of failed) { loginRetried.add(j.url); try { await api("/api/retry", { id: j.id }); await api("/api/delete", { ids: [j.id] }); } catch {} }
+  toast(`Logins saved for ${n} site${n === 1 ? "" : "s"}` + (failed.length ? `. Retrying ${failed.length} download${failed.length === 1 ? "" : "s"}` : ". Downloads will use them"));
+  poll(true);
+};
+function signIn() { if (bridge) return bridge.postMessage({ action: "signIn" }); $("signBrowser").value = S.cookies === "app" ? "" : (S.cookies || ""); $("signDlg").showModal(); }
+$("globeBtn").onclick = signIn; $("setSignIn").onclick = signIn;
+$("signSave").onclick = async () => { await setS({ cookies: $("signBrowser").value }); $("signDlg").close(); loadCookies(); toast("Saved"); };
+$("setSignOut").onclick = async () => { await api("/api/cookies/clear", {}); await loadSettings(); loadCookies(); toast("Signed out. Saved logins deleted"); };
+
+function openSettings() { renderPickers(); loadCookies(); $("settingsDlg").showModal(); }
+window.vdOpenSettings = openSettings;
+$("settingsBtn").onclick = openSettings;
+document.querySelectorAll("#setNav [data-page]").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#setNav [data-page]").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".set-page").forEach(p => p.classList.toggle("on", p.dataset.page === b.dataset.page));
+});
+document.querySelectorAll("[data-s]").forEach(el => el.addEventListener("change", () => {
+  let v = el.type === "checkbox" ? el.checked : el.value; if (el.type === "number") v = Number(v);
+  setS({ [el.dataset.s]: v }).then(() => { if (el.dataset.s === "cookies") loadCookies(); });
+}));
+document.addEventListener("click", e => { if (e.target.closest("[data-close]")) e.target.closest("dialog").close(); });
+document.querySelectorAll("dialog").forEach(d => d.addEventListener("click", e => { if (e.target === d) d.close(); }));
+$("setExport").onclick = async () => { const data = await api("/api/export"); const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })); a.download = "vd-plus-export.json"; a.click(); };
+$("setImport").onclick = () => $("importFile").click();
+$("importFile").onchange = async () => { const f = $("importFile").files[0]; if (!f) return; const txt = await f.text();
+  let body; try { body = { data: JSON.parse(txt) }; } catch { body = { text: txt }; }
+  try { const r = await api("/api/import", body); toast(`Imported ${r.imported} item(s)`); $("settingsDlg").close(); } catch (e) { fail(e); } $("importFile").value = ""; };
+$("setClear").onclick = () => { $("settingsDlg").close(); confirmRemove(null, false); };
+$("copyMcp").onclick = () => { navigator.clipboard.writeText($("mcpCmd").textContent).catch(() => {}); toast("Command copied"); };
+
+async function status() {
+  try { STATUS = await api("/api/status");
+    $("sbEngine").textContent = `Engine ${STATUS.ytdlp || "missing"}`;
+    if (!$("updBtn").disabled) {
+      $("updBtn").textContent = STATUS.engine_outdated ? "Update available" : "Update";
+      $("updBtn").style.cssText = STATUS.engine_outdated ? "color:var(--accent);font-weight:650" : "";
+      $("updBtn").title = STATUS.engine_outdated ? `Engine ${STATUS.engine_latest} is out. Sites change often, so an old engine is the usual reason a download fails.` : "Update the download engine";
+    }
+    $("aboutEngine").textContent = `yt-dlp ${STATUS.ytdlp} · ffmpeg ${STATUS.ffmpeg ? "✓" : "missing"} · Whisper ${STATUS.whisper ? "✓" : "not installed"}`;
+    $("mcpCmd").textContent = `claude mcp add --scope user vd-plus -- "${STATUS.python || "python3"}" "${STATUS.mcp || "/Applications/VD Plus.app/Contents/Resources/execution/ripper_mcp.py"}"`;
+    renderPickers();
+  } catch {}
+}
+$("updBtn").onclick = async () => { $("updBtn").textContent = "Updating…"; $("updBtn").disabled = true;
+  try { const r = await api("/api/update", {}); toast(r.busy ? "Downloads are running. Update when they finish" : r.ok ? `Engine up to date (${r.version})` : "Update failed. Check your internet connection"); } catch (e) { fail(e); }
+  $("updBtn").textContent = "Update"; $("updBtn").disabled = false; status(); };
+$("sbFolder").onclick = () => api("/api/reveal", {});
+
+// ---------------------------------------------------------------- polling
+let pollT, polling = false;
+const lastStatus = new Map(), autoSniffed = new Set(), autoLogin = new Set(), loginRetried = new Set(), bootAt = Date.now() - 3000;
+async function poll(now) {
+  clearTimeout(pollT);
+  if (!polling || now) {
+    polling = true;
+    try {
+      const next = await api("/api/jobs");
+      for (const j of next) {
+        const before = lastStatus.get(j.id);
+        const fresh = (before && ACTIVE.includes(before)) || (!before && j.created * 1000 > bootAt);
+        if (bridge && fresh && needsLogin(j) && j.source !== "ai" && !autoLogin.has(loginTarget(j).site) && !loginRetried.has(j.url)) {
+          autoLogin.add(loginTarget(j).site); JOBS = next; jobAction("signin", j.id);
+        }
+        if (bridge && fresh && canSniff(j) && j.source !== "ai" && !autoSniffed.has(j.id)) {
+          autoSniffed.add(j.id); JOBS = next; jobAction("sniff", j.id);
+        }
+        lastStatus.set(j.id, j.status);
+      }
+      JOBS = next; render(); if (detailsOpen) renderDetails();
+    } catch {}
+    polling = false;
+  }
+  const busy = JOBS.some(j => ACTIVE.includes(j.status));
+  pollT = setTimeout(poll, document.hidden ? 4000 : busy ? 800 : 2000);
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(true); });
+
+(async () => {
+  await status(); await loadSettings(); loadCookies(); loadSubs(); setDetails(detailsOpen); poll(true);
+  setInterval(status, 10 * 60 * 1000);
+})();
+</script>
+</body>
+</html>
